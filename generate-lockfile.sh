@@ -66,4 +66,4 @@ echo "Packages: $(grep -c '"resolved"' "${OUTPUT_DIR}/package-lock.json") depend
 echo ""
 echo "Next steps:"
 echo "  1. Update npmDepsHash in package.nix (run 'nix build' to get the new hash)"
-echo "  2. Rebuild with 'nix build -f package.nix'"
+echo "  2. Rebuild with 'nix build .'"
