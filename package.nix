@@ -2,13 +2,13 @@
 
 pkgs.buildNpmPackage rec {
   pname = "openclaw";
-  version = "2026.2.14";
+  version = "2026.2.15";
 
   src = pkgs.fetchFromGitHub {
     owner = "openclaw";
     repo = pname;
     rev = "v${version}";
-    hash = "sha256-x0VEBmlNaqY+F5ZLn1pQbxYM0y2cBNx0Gon71ECpV/U=";
+    hash = "sha256-nEOmhpNtsi/HlmgABXurE7FuC6E65q0KWv8hOu9ojlI=";
   };
 
   postPatch = ''
@@ -24,7 +24,7 @@ pkgs.buildNpmPackage rec {
 
   nodejs = pkgs.nodejs_24;
 
-  npmDepsHash = "sha256-2Cww6nKbMnXV0iKUz//YtzqtOJ5VnksaoGOKMC9X2Zw=";
+  npmDepsHash = "sha256-gIX9HgDi8tKY+lkvTHe0+pkYR7ubClfJ7+IIMA5v6KA=";
 
   makeCacheWritable = true;
 
