@@ -17,7 +17,7 @@
 set -euo pipefail
 
 # Configuration
-VERSION="${1:-2026.2.15}"
+VERSION="${1:-2026.2.17}"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 OUTPUT_DIR="$SCRIPT_DIR"
 TEMP_DIR=$(mktemp -d)
