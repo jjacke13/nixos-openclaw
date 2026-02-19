@@ -20,8 +20,11 @@
       };
     };
 
-    nixosModules = {
-     ## To be added 
+    nixosModules = {  ### Currently testing
+      default = { pkgs, lib, ... }: {
+        imports = [ ./module.nix ];
+        services.openclaw.package = lib.mkDefault (import ./package.nix { inherit pkgs; });
+      };
     };
     
     nixosConfigurations= {
