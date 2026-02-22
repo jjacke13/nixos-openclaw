@@ -54,6 +54,11 @@ let
     } // lib.optionalAttrs (cfg.logging.file != null) {
       file = cfg.logging.file;
     };
+    agents = {
+      defaults = {
+        workspace = cfg.workspace;
+      };
+    };
   } // lib.optionalAttrs (cfg.includeFile != null) {
     "$include" = cfg.includeFile;
   };
@@ -112,6 +117,12 @@ in {
       type = lib.types.listOf lib.types.package;
       default = [ ];
       description = "Extra packages to add to OpenClaw's PATH";
+    };
+
+    workspace = lib.mkOption {
+      type = lib.types.str;
+      default = "${cfg.dataDir}/workspace";
+      description = "Workspace directory for agent memory, identity, and session files";
     };
 
     # === Logging ===
@@ -360,9 +371,7 @@ in {
       environment = {
         HOME = cfg.dataDir;
         OPENCLAW_CONFIG_PATH = toString configFile;
-        OPENCLAW_NIX_MODE = "1";
         OPENCLAW_STATE_DIR = cfg.dataDir;
-        LD_LIBRARY_PATH = "${pkgs.stdenv.cc.cc.lib}/lib:${pkgs.glibc}/lib"; #this enables running locally memory embedding models
         PATH = "${cfg.dataDir}/.npm-global/bin:$PATH";  # prepend npm-global to systemd path
       };
 
@@ -371,6 +380,7 @@ in {
         User = cfg.user;
         Group = cfg.group;
         WorkingDirectory = cfg.dataDir;
+        ExecStartPre = "${pkgs.bash}/bin/bash -c 'if [ ! -f ${cfg.dataDir}/.workspace-initialized ]; then ${cfg.package}/bin/openclaw setup --workspace ${cfg.workspace} && touch ${cfg.dataDir}/.workspace-initialized; fi'";
         ExecStart = "${cfg.package}/bin/openclaw gateway";
         Restart = "on-failure";
         RestartSec = 10;
