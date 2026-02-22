@@ -39,13 +39,15 @@ pkgs.buildNpmPackage rec {
     python3
     pkg-config
     nodePackages.pnpm  # Build scripts use pnpm commands
+    makeWrapper        # For wrapping the binary with runtime env vars
   ];
 
   # Environment configuration
   env = {
     OPENCLAW_NIX_MODE = "1";
 
-    # Skip node-llama-cpp download/build entirely (use external API instead)
+    # llama-cpp modules are included in the resulting package
+    # If these variables are not set, nix tries to compile from scratch the llama-cpp modules
     NODE_LLAMA_CPP_SKIP_DOWNLOAD = "true";
     LLAMA_CPP_SKIP_DOWNLOAD = "true";
 
@@ -75,6 +77,16 @@ pkgs.buildNpmPackage rec {
   # These point to local packages that aren't part of the final output
   preFixup = ''
     find $out -type l ! -exec test -e {} \; -delete
+  '';
+
+  # Environment variables needed at runtime
+  # LD_LIBRARY_PATH needed so local memory embedding models can be run
+  # coreutils and bash are needed in the PATH so the agent can run basic commands
+  postFixup = ''
+    wrapProgram $out/bin/openclaw \
+      --suffix LD_LIBRARY_PATH : "${pkgs.lib.makeLibraryPath [ pkgs.stdenv.cc.cc.lib pkgs.glibc ]}" \
+      --prefix PATH : "${pkgs.lib.makeBinPath [ pkgs.coreutils pkgs.bash ]}" \
+      --set OPENCLAW_NIX_MODE 1
   '';
 
   meta = {
