@@ -6,10 +6,11 @@ NixOS Openclaw package and modules
 
 ## Current State
 - openclaw package (including web UI) working
-- basic functionality working (you can run it manually and then edit ~/.openclaw/openclaw.json for configuration)
+- memory local embeddings working out of the box when running the package manually
+- default nixos module currently under testing
 
 ## Next steps
-- More openclaw dependencies will be added, needed for skill installation, memory local embeddings, etc.
-- This repo will be populated with a NixOS module with configuration options for running openclaw gateway as a systemd service
+- More openclaw dependencies will be added, needed for skill installation etc.
+- More options will be added to the nixos module
 - NixOS configurations will be added for small devices (Rpi4, Rpi5, Nanopi). Openclaw is pretty lightweight and can run easily on them
 
