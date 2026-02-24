@@ -394,6 +394,15 @@ in {
 
     users.groups.${cfg.group} = {};
 
+    # Allow openclaw user to restart its own service (needed by setup wizard)
+    security.sudo.extraRules = [{
+      users = [ cfg.user ];
+      commands = [{
+        command = "/run/current-system/sw/bin/systemctl restart openclaw.service";
+        options = [ "NOPASSWD" ];
+      }];
+    }];
+
     systemd.tmpfiles.rules = [
       "d ${cfg.dataDir} 0750 ${cfg.user} ${cfg.group} -"
     ];
