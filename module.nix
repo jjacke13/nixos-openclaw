@@ -180,14 +180,14 @@ in {
 
   # === Service configuration ===
   config = lib.mkIf cfg.enable {
-    users.users.${cfg.user} = {
+    users.users.${cfg.user} = lib.mkIf (cfg.user == "openclaw") {
       isSystemUser = true;
       group = cfg.group;
       home = cfg.dataDir;
       createHome = true;
     };
 
-    users.groups.${cfg.group} = {};
+    users.groups.${cfg.group} = lib.mkIf (cfg.group == "openclaw") {};
 
     # Allow openclaw user to restart its own service (needed by setup wizard)
     security.sudo.extraRules = [{
