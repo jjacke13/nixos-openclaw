@@ -1,7 +1,7 @@
 # NixOS module for OpenClaw
 #
 # Philosophy: Build JSON config from Nix options using submodules.
-# Start minimal, add options progressively.
+# Option definitions are split into options/*.nix files.
 
 { config, lib, pkgs, ... }:
 
@@ -54,9 +54,43 @@ let
     } // lib.optionalAttrs (cfg.logging.file != null) {
       file = cfg.logging.file;
     };
+
+    # Note: heartbeat.every and maxConcurrent are managed by the wizard
+    # (user-config.json) and deliberately omitted here so $include values
+    # are not overridden by sibling keys.
     agents = {
       defaults = {
         workspace = cfg.workspace;
+        memorySearch = {
+          enabled = cfg.agents.defaults.memorySearch.enabled;
+          sources = cfg.agents.defaults.memorySearch.sources;
+          experimental = {
+            sessionMemory = cfg.agents.defaults.memorySearch.experimental.sessionMemory;
+          };
+          provider = cfg.agents.defaults.memorySearch.provider;
+          cache = {
+            enabled = cfg.agents.defaults.memorySearch.cache.enabled;
+            maxEntries = cfg.agents.defaults.memorySearch.cache.maxEntries;
+          };
+        } // lib.optionalAttrs (cfg.agents.defaults.memorySearch.local.modelPath != null) {
+          local = {
+            modelPath = cfg.agents.defaults.memorySearch.local.modelPath;
+          };
+        };
+        contextPruning = {
+          mode = cfg.agents.defaults.contextPruning.mode;
+          ttl = cfg.agents.defaults.contextPruning.ttl;
+        };
+        compaction = {
+          mode = cfg.agents.defaults.compaction.mode;
+        };
+        subagents = {
+          maxConcurrent = cfg.agents.defaults.subagents.maxConcurrent;
+        };
+      } // lib.optionalAttrs (cfg.agents.defaults.heartbeat.model != null) {
+        heartbeat = {
+          model = cfg.agents.defaults.heartbeat.model;
+        };
       };
     };
 
@@ -75,6 +109,15 @@ let
   configFile = pkgs.writeText "openclaw.json" (builtins.toJSON openclawConfig);
 
 in {
+  imports = [
+    ./options/agents.nix
+    ./options/browser.nix
+    ./options/gateway.nix
+    ./options/hooks.nix
+    ./options/logging.nix
+  ];
+
+  # === Common options ===
   options.services.openclaw = {
     enable = lib.mkEnableOption "OpenClaw AI gateway";
 
@@ -133,257 +176,9 @@ in {
       default = "${cfg.dataDir}/workspace";
       description = "Workspace directory for agent memory, identity, and session files";
     };
-
-    # === Logging ===
-    logging = lib.mkOption {
-      type = lib.types.submodule {
-        options = {
-          level = lib.mkOption {
-            type = lib.types.enum [ "trace" "debug" "info" "warn" "error" ];
-            default = "info";
-            description = "Log level";
-          };
-
-          file = lib.mkOption {
-            type = lib.types.nullOr lib.types.str;
-            default = null;
-            description = "Log file path";
-          };
-
-          consoleLevel = lib.mkOption {
-            type = lib.types.enum [ "trace" "debug" "info" "warn" "error" ];
-            default = "info";
-            description = "Console log level";
-          };
-
-          consoleStyle = lib.mkOption {
-            type = lib.types.enum [ "pretty" "compact" "json" ];
-            default = "pretty";
-            description = "Console log style";
-          };
-
-          redactSensitive = lib.mkOption {
-            type = lib.types.enum [ "off" "tools" ];
-            default = "tools";
-            description = "Redact sensitive data in logs";
-          };
-
-          redactPatterns = lib.mkOption {
-            type = lib.types.listOf lib.types.str;
-            default = [ "\\bTOKEN\\b\\s*[=:]\\s*([\"']?)([^\\s\"']+)\\1" ];
-            description = "Regex patterns for redaction";
-          };
-        };
-      };
-      default = { };
-      description = "Logging configuration";
-    };
-
-    # === Browser ===
-    browser = lib.mkOption {
-      type = lib.types.submodule {
-        options = {
-          enabled = lib.mkOption {
-            type = lib.types.bool;
-            default = true;
-            description = "Enable browser automation";
-          };
-
-          executablePath = lib.mkOption {
-            type = lib.types.str;
-            default = "${pkgs.chromium}/bin/chromium";
-            description = "Path to browser executable";
-          };
-
-          headless = lib.mkOption {
-            type = lib.types.bool;
-            default = true;
-            description = "Run browser in headless mode";
-          };
-
-          noSandbox = lib.mkOption {
-            type = lib.types.bool;
-            default = true;
-            description = "Disable browser sandbox (required for some setups)";
-          };
-
-          attachOnly = lib.mkOption {
-            type = lib.types.bool;
-            default = false;
-            description = "Only attach to existing browser, don't launch";
-          };
-
-          defaultProfile = lib.mkOption {
-            type = lib.types.str;
-            default = "openclaw";
-            description = "Default browser profile name";
-          };
-
-          color = lib.mkOption {
-            type = lib.types.nullOr lib.types.str;
-            default = null;
-            description = "Browser highlight color (hex)";
-          };
-
-          remoteCdpTimeoutMs = lib.mkOption {
-            type = lib.types.int;
-            default = 1500;
-            description = "Remote CDP HTTP timeout (ms)";
-          };
-
-          remoteCdpHandshakeTimeoutMs = lib.mkOption {
-            type = lib.types.int;
-            default = 3000;
-            description = "Remote CDP WebSocket handshake timeout (ms)";
-          };
-
-          profiles = lib.mkOption {
-            type = lib.types.attrsOf (lib.types.submodule {
-              options = {
-                cdpPort = lib.mkOption {
-                  type = lib.types.nullOr lib.types.port;
-                  default = null;
-                  description = "CDP port for this profile";
-                };
-
-                cdpUrl = lib.mkOption {
-                  type = lib.types.nullOr lib.types.str;
-                  default = null;
-                  description = "CDP URL for remote browser";
-                };
-
-                color = lib.mkOption {
-                  type = lib.types.nullOr lib.types.str;
-                  default = null;
-                  description = "Profile highlight color (hex)";
-                };
-              };
-            });
-            default = { };
-            description = "Browser profiles";
-          };
-        };
-      };
-      default = { };
-      description = "Browser automation configuration";
-    };
-
-    # === Gateway ===
-    gateway = lib.mkOption {
-      type = lib.types.submodule {
-        options = {
-          port = lib.mkOption {
-            type = lib.types.port;
-            default = 18789;
-            description = "Gateway server port";
-          };
-
-          mode = lib.mkOption {
-            type = lib.types.enum [ "local" "remote" ];
-            default = "local";
-            description = "Gateway mode";
-          };
-
-          bind = lib.mkOption {
-            type = lib.types.enum [ "loopback" "lan" "tailnet" "auto" "custom" ];
-            default = "loopback";
-            description = "Network interface binding";
-          };
-
-          auth = lib.mkOption {
-            type = lib.types.submodule {
-              options = {
-                mode = lib.mkOption {
-                  type = lib.types.enum [ "none" "token" "password" ];
-                  default = "none";
-                  description = "Authentication mode";
-                };
-
-                token = lib.mkOption {
-                  type = lib.types.nullOr lib.types.str;
-                  default = null;
-                  description = "Auth token (for mode = token)";
-                };
-
-                password = lib.mkOption {
-                  type = lib.types.nullOr lib.types.str;
-                  default = null;
-                  description = "Auth password (for mode = password)";
-                };
-              };
-            };
-            default = { };
-            description = "Authentication settings";
-          };
-
-          tailscale = lib.mkOption {
-            type = lib.types.submodule {
-              options = {
-                mode = lib.mkOption {
-                  type = lib.types.enum [ "off" "serve" "funnel" ];
-                  default = "off";
-                  description = "Tailscale exposure mode";
-                };
-
-                resetOnExit = lib.mkOption {
-                  type = lib.types.bool;
-                  default = false;
-                  description = "Reset Tailscale serve/funnel on shutdown";
-                };
-              };
-            };
-            default = { };
-            description = "Tailscale settings";
-          };
-        };
-      };
-      default = { };
-      description = "Gateway configuration";
-    };
-
-    # === Hooks ===
-    hooks = lib.mkOption {
-      type = lib.types.submodule {
-        options = {
-          internal = lib.mkOption {
-            type = lib.types.submodule {
-              options = {
-                enabled = lib.mkOption {
-                  type = lib.types.bool;
-                  default = true;
-                  description = "Enable internal hooks";
-                };
-
-                entries = lib.mkOption {
-                  type = lib.types.attrsOf (lib.types.submodule {
-                    options = {
-                      enabled = lib.mkOption {
-                        type = lib.types.bool;
-                        default = true;
-                        description = "Enable this hook";
-                      };
-                    };
-                  });
-                  default = {
-                    bootstrap-extra-files.enabled = true;
-                    boot-md.enabled = true;
-                    command-logger.enabled = true;
-                    session-memory.enabled = true;
-                  };
-                  description = "Internal hook entries";
-                };
-              };
-            };
-            default = { };
-            description = "Internal hooks configuration";
-          };
-        };
-      };
-      default = { };
-      description = "Hooks configuration";
-    };
   };
 
+  # === Service configuration ===
   config = lib.mkIf cfg.enable {
     users.users.${cfg.user} = {
       isSystemUser = true;
