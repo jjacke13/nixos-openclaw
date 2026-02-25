@@ -227,7 +227,7 @@ in {
         HOME = cfg.dataDir;
         OPENCLAW_CONFIG_PATH = toString configFile;
         OPENCLAW_STATE_DIR = cfg.dataDir;
-        PATH = "${cfg.dataDir}/.npm-global/bin:$PATH";  # prepend npm-global to systemd path
+        NPM_CONFIG_PREFIX = "${cfg.dataDir}/.npm-global";
       };
 
       serviceConfig = {
@@ -235,8 +235,8 @@ in {
         User = cfg.user;
         Group = cfg.group;
         WorkingDirectory = cfg.dataDir;
-        ExecStartPre = "${pkgs.bash}/bin/bash -c 'if [ ! -f ${cfg.dataDir}/.workspace-initialized ]; then ${cfg.package}/bin/openclaw setup --workspace ${cfg.workspace} && touch ${cfg.dataDir}/.workspace-initialized; fi'";
-        ExecStart = "${cfg.package}/bin/openclaw gateway";
+        ExecStartPre = "${pkgs.bash}/bin/bash -c 'export PATH=\"${cfg.dataDir}/.npm-global/bin:$PATH\"; if [ ! -f ${cfg.dataDir}/.workspace-initialized ]; then ${cfg.package}/bin/openclaw setup --workspace ${cfg.workspace} && touch ${cfg.dataDir}/.workspace-initialized; fi'";
+        ExecStart = "${pkgs.bash}/bin/bash -c 'export PATH=\"${cfg.dataDir}/.npm-global/bin:$PATH\" && exec ${cfg.package}/bin/openclaw gateway'";
         Restart = "on-failure";
         RestartSec = 10;
       };
