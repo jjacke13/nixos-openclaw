@@ -56,7 +56,7 @@ pkgs.buildNpmPackage rec {
     PKG_CONFIG_PATH = "${pkgs.vips.dev}/lib/pkgconfig";
 
     # Help native modules find libraries
-    LD_LIBRARY_PATH = "${pkgs.stdenv.cc.cc.lib}/lib";
+    LD_LIBRARY_PATH = "${pkgs.stdenv.cc.cc.lib}/lib:${pkgs.libopus}/lib";
 
     # Disable pnpm strict version checking (can't download in sandbox)
     COREPACK_ENABLE_STRICT = "0";
@@ -84,7 +84,7 @@ pkgs.buildNpmPackage rec {
   # coreutils and bash are needed in the PATH so the agent can run basic commands
   postFixup = ''
     wrapProgram $out/bin/openclaw \
-      --suffix LD_LIBRARY_PATH : "${pkgs.lib.makeLibraryPath [ pkgs.stdenv.cc.cc.lib pkgs.glibc ]}" \
+      --suffix LD_LIBRARY_PATH : "${pkgs.lib.makeLibraryPath [ pkgs.stdenv.cc.cc.lib pkgs.glibc pkgs.libopus ]}" \
       --prefix PATH : "${pkgs.lib.makeBinPath [ pkgs.coreutils pkgs.bash ]}" \
       --set OPENCLAW_NIX_MODE 1
   '';
