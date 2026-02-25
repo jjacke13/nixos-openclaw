@@ -224,7 +224,7 @@ in {
       ] ++ cfg.extraPackages;
 
       environment = {
-        HOME = cfg.dataDir;
+        OPENCLAW_HOME = cfg.dataDir;
         OPENCLAW_CONFIG_PATH = "${cfg.dataDir}/config.json";
         OPENCLAW_STATE_DIR = cfg.dataDir;
         NPM_CONFIG_PREFIX = "${cfg.dataDir}/.npm-global";
