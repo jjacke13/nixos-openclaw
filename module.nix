@@ -225,7 +225,7 @@ in {
 
       environment = {
         HOME = cfg.dataDir;
-        OPENCLAW_CONFIG_PATH = toString configFile;
+        OPENCLAW_CONFIG_PATH = "${cfg.dataDir}/config.json";
         OPENCLAW_STATE_DIR = cfg.dataDir;
         NPM_CONFIG_PREFIX = "${cfg.dataDir}/.npm-global";
       };
@@ -235,7 +235,10 @@ in {
         User = cfg.user;
         Group = cfg.group;
         WorkingDirectory = cfg.dataDir;
-        ExecStartPre = "${pkgs.bash}/bin/bash -c 'export PATH=\"${cfg.dataDir}/.npm-global/bin:$PATH\"; if [ ! -f ${cfg.dataDir}/.workspace-initialized ]; then ${cfg.package}/bin/openclaw setup --workspace ${cfg.workspace} && touch ${cfg.dataDir}/.workspace-initialized; fi'";
+        ExecStartPre = [
+          "${pkgs.bash}/bin/bash -c 'cp -f ${configFile} ${cfg.dataDir}/config.json'"
+          "${pkgs.bash}/bin/bash -c 'export PATH=\"${cfg.dataDir}/.npm-global/bin:$PATH\"; if [ ! -f ${cfg.dataDir}/.workspace-initialized ]; then ${cfg.package}/bin/openclaw setup --workspace ${cfg.workspace} && touch ${cfg.dataDir}/.workspace-initialized; fi'"
+        ];
         ExecStart = "${pkgs.bash}/bin/bash -c 'export PATH=\"${cfg.dataDir}/.npm-global/bin:$PATH\" && exec ${cfg.package}/bin/openclaw gateway'";
         Restart = "on-failure";
         RestartSec = 10;
