@@ -66,7 +66,7 @@ pkgs.buildNpmPackage rec {
   # openclaw uses pnpm, but we provide a vendored package-lock.json
   # generated from the package.json for reproducible builds
 
-  npmPackFlags = [ "--ignore-scripts" ];
+  npmFlags = [ "--ignore-scripts" ];
 
   # UI build. package-lock.json has all workspace dependencies
   postBuild = ''
