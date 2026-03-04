@@ -11,13 +11,13 @@
 #
 # Examples:
 #   ./generate-lockfile.sh           # Uses default version
-#   ./generate-lockfile.sh 2026.2.9  # Specific version
+#   ./generate-lockfile.sh 2026.3.2  # Specific version
 #
 
 set -euo pipefail
 
 # Configuration
-VERSION="${1:-2026.2.26}"
+VERSION="${1:-2026.3.2}"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 OUTPUT_DIR="$SCRIPT_DIR"
 TEMP_DIR=$(mktemp -d)

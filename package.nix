@@ -2,17 +2,18 @@
 
 pkgs.buildNpmPackage rec {
   pname = "openclaw";
-  version = "2026.2.26";
+  version = "2026.3.2";
 
   src = pkgs.fetchFromGitHub {
     owner = "openclaw";
     repo = pname;
     rev = "v${version}";
-    hash = "sha256-9kej1aK7j3/FU2X/bN983YqQClfnWfFPvByEkQKlQ4E=";
+    hash = "sha256-4WfyeBoeFufhzD4MI+z8lhQk+9/ST4UNOmQvQjo+I9c=";
   };
 
   postPatch = ''
     cp ${./package-lock.json} package-lock.json
+    chmod +w package-lock.json
 
     # Remove packageManager field and add npm workspaces (to match pnpm-workspace.yaml)
     ${pkgs.jq}/bin/jq 'del(.packageManager) | . + {"workspaces": ["ui", "packages/*", "extensions/*"]}' package.json > package.json.tmp
@@ -24,7 +25,7 @@ pkgs.buildNpmPackage rec {
 
   nodejs = pkgs.nodejs_24;
 
-  npmDepsHash = "sha256-/iof7IcL/IR0PDev7D8zEVLvdSL8/zLxim+JHiEkPEw=";
+  npmDepsHash = "sha256-RRjp+84zcmNNCcmKmTlzOWBUDZs+ZHE06y+2kp4kP7k=";
 
   makeCacheWritable = true;
 
