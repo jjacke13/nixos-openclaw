@@ -3,6 +3,8 @@
 # Philosophy: Build JSON config from Nix options using submodules.
 # Option definitions are split into options/*.nix files.
 
+{ self }:
+
 { config, lib, pkgs, ... }:
 
 let
@@ -123,6 +125,7 @@ in {
 
     package = lib.mkOption {
       type = lib.types.package;
+      default = self.packages.${pkgs.system}.openclaw;
       description = "The OpenClaw package to use";
     };
 

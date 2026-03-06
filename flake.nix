@@ -20,11 +20,10 @@
       };
     };
 
-    nixosModules = {  ### Currently testing
-      default = { pkgs, lib, ... }: {
-        imports = [ ./module.nix ];
-        services.openclaw.package = lib.mkDefault (import ./package.nix { inherit pkgs; });
-      };
+    nixosModules = {
+      openclaw = import ./module.nix { inherit self; };
+      openclaw-wizard = import ./wizard-module.nix { inherit self; };
+      default = self.nixosModules.openclaw;
     };
     
     nixosConfigurations= {
