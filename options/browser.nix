@@ -11,7 +11,7 @@
 
         executablePath = lib.mkOption {
           type = lib.types.str;
-          default = "${pkgs.chromium}/bin/chromium-browser";
+          default = "${pkgs.chromium}/bin/chromium";
           description = "Path to browser executable";
         };
 
