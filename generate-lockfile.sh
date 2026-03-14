@@ -51,10 +51,12 @@ mv tmp.json package.json
 echo "[3/4] Replacing workspace:* protocol references..."
 find . -name "package.json" -exec sed -i 's/"workspace:\*"/"*"/g' {} \;
 
-# Step 4: Add node-llama-cpp as a direct dependency
-# Upstream moved it to an optional peerDependency, but we need it installed
-# so local LLM inference works out of the box.
-echo "[4/5] Adding node-llama-cpp as direct dependency..."
+# Step 4: Promote optional peerDependencies to direct dependencies.
+# npm workspaces + buildNpmPackage loses optional peer deps during prune.
+# Must stay in sync with postPatch in package.nix.
+# NOTE: On each upstream version bump, check for new optional peerDependencies.
+# Currently promoted: node-llama-cpp (local LLM inference)
+echo "[4/5] Promoting optional peerDependencies to direct dependencies..."
 jq '.dependencies["node-llama-cpp"] = "3.16.2"' package.json > tmp.json
 mv tmp.json package.json
 
