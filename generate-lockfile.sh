@@ -51,8 +51,15 @@ mv tmp.json package.json
 echo "[3/4] Replacing workspace:* protocol references..."
 find . -name "package.json" -exec sed -i 's/"workspace:\*"/"*"/g' {} \;
 
-# Step 4: Generate package-lock.json with all workspace dependencies
-echo "[4/4] Generating package-lock.json (this may take a while)..."
+# Step 4: Add node-llama-cpp as a direct dependency
+# Upstream moved it to an optional peerDependency, but we need it installed
+# so local LLM inference works out of the box.
+echo "[4/5] Adding node-llama-cpp as direct dependency..."
+jq '.dependencies["node-llama-cpp"] = "3.16.2"' package.json > tmp.json
+mv tmp.json package.json
+
+# Step 5: Generate package-lock.json with all workspace dependencies
+echo "[5/5] Generating package-lock.json (this may take a while)..."
 npm install --package-lock-only --workspaces --include-workspace-root 2>&1 | tail -5
 
 # Copy result
