@@ -25,7 +25,7 @@ pkgs.buildNpmPackage rec {
 
   nodejs = pkgs.nodejs_24;
 
-  npmDepsHash = "sha256-ebflwR+UKBfbZjHUUOf/YKNeFmKjyquRfqxuoNX6U7s=";
+  npmDepsHash = "sha256-TzuvXcF7ElYL37bZwBszutH2CdrxACdCB1OlU6sDKk8=";
 
   makeCacheWritable = true;
 
@@ -47,8 +47,8 @@ pkgs.buildNpmPackage rec {
   env = {
     OPENCLAW_NIX_MODE = "1";
 
-    # llama-cpp modules are included in the resulting package
-    # If these variables are not set, nix tries to compile from scratch the llama-cpp modules
+    # Skip llama.cpp source compilation — prebuilt binaries are
+    # already fetched as part of the npm dependency cache.
     NODE_LLAMA_CPP_SKIP_DOWNLOAD = "true";
     LLAMA_CPP_SKIP_DOWNLOAD = "true";
 
@@ -57,7 +57,7 @@ pkgs.buildNpmPackage rec {
     PKG_CONFIG_PATH = "${pkgs.vips.dev}/lib/pkgconfig";
 
     # Help native modules find libraries
-    LD_LIBRARY_PATH = "${pkgs.stdenv.cc.cc.lib}/lib:${pkgs.libopus}/lib";
+    LD_LIBRARY_PATH = "${pkgs.stdenv.cc.cc.lib}/lib:${pkgs.libopus}/lib:${pkgs.glibc}/lib";
 
     # Disable pnpm strict version checking (can't download in sandbox)
     COREPACK_ENABLE_STRICT = "0";
