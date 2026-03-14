@@ -15,8 +15,16 @@ pkgs.buildNpmPackage rec {
     cp ${./package-lock.json} package-lock.json
     chmod +w package-lock.json
 
-    # Remove packageManager field and add npm workspaces (to match pnpm-workspace.yaml)
-    ${pkgs.jq}/bin/jq 'del(.packageManager) | . + {"workspaces": ["ui", "packages/*", "extensions/*"]}' package.json > package.json.tmp
+    # Remove packageManager field, add npm workspaces, and promote optional
+    # peerDependencies to direct dependencies (matches generate-lockfile.sh).
+    # NOTE: On each upstream version bump, check if new optional peerDependencies
+    # were added that need promoting here and in generate-lockfile.sh.
+    # Currently promoted: node-llama-cpp (local LLM inference)
+    ${pkgs.jq}/bin/jq '
+      del(.packageManager)
+      | . + {"workspaces": ["ui", "packages/*", "extensions/*"]}
+      | .dependencies["node-llama-cpp"] = "3.16.2"
+    ' package.json > package.json.tmp
     mv package.json.tmp package.json
 
     # Replace pnpm workspace:* protocol with * (npm doesn't understand workspace:)
@@ -72,6 +80,29 @@ pkgs.buildNpmPackage rec {
   # UI build. package-lock.json has all workspace dependencies
   postBuild = ''
     pnpm ui:build
+  '';
+
+  # npm workspaces hoist dependencies to the workspace root, but
+  # buildNpmPackage only copies the package's own node_modules subtree.
+  # Rescue any hoisted packages that didn't make it into the output.
+  postInstall = ''
+    local pkg_nm="$out/lib/node_modules/openclaw/node_modules"
+    for dir in node_modules/*/; do
+      local name="$(basename "$dir")"
+      if [ ! -d "$pkg_nm/$name" ] && [ ! -L "$pkg_nm/$name" ]; then
+        cp -r "$dir" "$pkg_nm/$name"
+      fi
+    done
+    for dir in node_modules/@*/; do
+      local scope="$(basename "$dir")"
+      for pkg in "$dir"*/; do
+        local name="$scope/$(basename "$pkg")"
+        if [ ! -d "$pkg_nm/$name" ] && [ ! -L "$pkg_nm/$name" ]; then
+          mkdir -p "$pkg_nm/$scope"
+          cp -r "$pkg" "$pkg_nm/$name"
+        fi
+      done
+    done
   '';
 
   # Remove broken workspace symlinks created by npm workspaces
