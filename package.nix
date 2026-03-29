@@ -1,124 +1,93 @@
-{ pkgs, ...}:
+{ pkgs, ... }:
 
-pkgs.buildNpmPackage rec {
+let
+  pnpm = pkgs.pnpm_10;
+  nodejs = pkgs.nodejs_22;
+in
+pkgs.stdenvNoCC.mkDerivation (finalAttrs: {
   pname = "openclaw";
-  version = "2026.3.12";
+  version = "2026.3.28";
 
   src = pkgs.fetchFromGitHub {
     owner = "openclaw";
-    repo = pname;
-    rev = "v${version}";
-    hash = "sha256-dGKfXkC7vHflGbg+SkgSMfM5LW8w1YQIWicgp3BKDQ8=";
+    repo = "openclaw";
+    rev = "v${finalAttrs.version}";
+    hash = "sha256-mv1G9AWo/aGrJZGLE5mbvQrJDEgfvuvBlDBfi7EPnbc=";
   };
 
-  postPatch = ''
-    cp ${./package-lock.json} package-lock.json
-    chmod +w package-lock.json
+  pnpmDeps = pnpm.fetchDeps {
+    inherit (finalAttrs) pname version src;
+    hash = "sha256-Kcuh8LdTCF9/d36eo/DtqN9zQwWWOYlrNz7c1gem1FY=";
+    fetcherVersion = 2;
+  };
 
-    # Remove packageManager field, add npm workspaces, and promote optional
-    # peerDependencies to direct dependencies (matches generate-lockfile.sh).
-    # NOTE: On each upstream version bump, check if new optional peerDependencies
-    # were added that need promoting here and in generate-lockfile.sh.
-    # Currently promoted: node-llama-cpp (local LLM inference)
-    ${pkgs.jq}/bin/jq '
-      del(.packageManager)
-      | . + {"workspaces": ["ui", "packages/*", "extensions/*"]}
-      | .dependencies["node-llama-cpp"] = "3.16.2"
-    ' package.json > package.json.tmp
-    mv package.json.tmp package.json
+  nativeBuildInputs = [
+    nodejs
+    pnpm
+    pnpm.configHook
+    pkgs.makeWrapper
+    pkgs.git
+    pkgs.jq
+  ];
 
-    # Replace pnpm workspace:* protocol with * (npm doesn't understand workspace:)
-    find . -name "package.json" -exec sed -i 's/"workspace:\*"/"*"/g' {} \;
-  '';
-
-  nodejs = pkgs.nodejs_24;
-
-  npmDepsHash = "sha256-TzuvXcF7ElYL37bZwBszutH2CdrxACdCB1OlU6sDKk8=";
-
-  makeCacheWritable = true;
-
-  # Runtime dependencies for openclaw
   buildInputs = with pkgs; [
-    vips          # For sharp image processing
-    sqlite        # For vector embeddings
+    vips
+    sqlite
   ];
 
-  nativeBuildInputs = with pkgs; [
-    git
-    python3
-    pkg-config
-    nodePackages.pnpm  # Build scripts use pnpm commands
-    makeWrapper        # For wrapping the binary with runtime env vars
-  ];
-
-  # Environment configuration
   env = {
     OPENCLAW_NIX_MODE = "1";
 
-    # Skip llama.cpp source compilation — prebuilt binaries are
-    # already fetched as part of the npm dependency cache.
+    # Skip llama.cpp source compilation
     NODE_LLAMA_CPP_SKIP_DOWNLOAD = "true";
     LLAMA_CPP_SKIP_DOWNLOAD = "true";
 
-    # Help sharp use system vips instead of building from source
+    # Use system vips for sharp
     SHARP_IGNORE_GLOBAL_LIBVIPS = "0";
     PKG_CONFIG_PATH = "${pkgs.vips.dev}/lib/pkgconfig";
 
-    # Help native modules find libraries
+    # Native module library paths
     LD_LIBRARY_PATH = "${pkgs.stdenv.cc.cc.lib}/lib:${pkgs.libopus}/lib:${pkgs.glibc}/lib";
 
-    # Disable pnpm strict version checking (can't download in sandbox)
-    COREPACK_ENABLE_STRICT = "0";
-    PNPM_HOME = "/build/.pnpm";
+    # Skip browser downloads
+    PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD = "1";
   };
 
-  # openclaw uses pnpm, but we provide a vendored package-lock.json
-  # generated from the package.json for reproducible builds
+  postPatch = ''
+    # Remove packageManager field to avoid corepack version mismatch
+    ${pkgs.jq}/bin/jq 'del(.packageManager)' package.json > package.json.tmp
+    mv package.json.tmp package.json
 
-  npmFlags = [ "--ignore-scripts" ];
+    # Skip stageBundledPluginRuntimeDeps — it runs npm install per plugin
+    # (discord, slack, feishu, telegram) which fails in the sandbox.
+    # The deps are available via pnpm's node_modules linking.
+    sed -i 's/stageBundledPluginRuntimeDeps(params)/void 0/' scripts/runtime-postbuild.mjs
+  '';
 
-  # UI build. package-lock.json has all workspace dependencies
-  postBuild = ''
+  buildPhase = ''
+    runHook preBuild
+    pnpm build
     pnpm ui:build
+    runHook postBuild
   '';
 
-  # npm workspaces hoist dependencies to the workspace root, but
-  # buildNpmPackage only copies the package's own node_modules subtree.
-  # Rescue any hoisted packages that didn't make it into the output.
-  postInstall = ''
-    local pkg_nm="$out/lib/node_modules/openclaw/node_modules"
-    for dir in node_modules/*/; do
-      local name="$(basename "$dir")"
-      if [ ! -d "$pkg_nm/$name" ] && [ ! -L "$pkg_nm/$name" ]; then
-        cp -r "$dir" "$pkg_nm/$name"
-      fi
-    done
-    for dir in node_modules/@*/; do
-      local scope="$(basename "$dir")"
-      for pkg in "$dir"*/; do
-        local name="$scope/$(basename "$pkg")"
-        if [ ! -d "$pkg_nm/$name" ] && [ ! -L "$pkg_nm/$name" ]; then
-          mkdir -p "$pkg_nm/$scope"
-          cp -r "$pkg" "$pkg_nm/$name"
-        fi
-      done
-    done
-  '';
+  installPhase = ''
+    runHook preInstall
 
-  # Remove broken workspace symlinks created by npm workspaces
-  # These point to local packages that aren't part of the final output
-  preFixup = ''
-    find $out -type l ! -exec test -e {} \; -delete
-  '';
+    mkdir -p $out/lib/openclaw $out/bin
 
-  # Environment variables needed at runtime
-  # LD_LIBRARY_PATH needed so local memory embedding models can be run
-  # coreutils and bash are needed in the PATH so the agent can run basic commands
-  postFixup = ''
-    wrapProgram $out/bin/openclaw \
+    cp -r dist node_modules package.json $out/lib/openclaw/
+
+    # Remove broken symlinks (workspace packages not in output)
+    find $out/lib/openclaw/node_modules -type l ! -exec test -e {} \; -delete
+
+    makeWrapper ${nodejs}/bin/node $out/bin/openclaw \
+      --add-flags "$out/lib/openclaw/dist/index.js" \
       --suffix LD_LIBRARY_PATH : "${pkgs.lib.makeLibraryPath [ pkgs.stdenv.cc.cc.lib pkgs.glibc pkgs.libopus ]}" \
       --prefix PATH : "${pkgs.lib.makeBinPath [ pkgs.coreutils pkgs.bash ]}" \
       --set OPENCLAW_NIX_MODE 1
+
+    runHook postInstall
   '';
 
   meta = {
@@ -127,4 +96,4 @@ pkgs.buildNpmPackage rec {
     license = pkgs.lib.licenses.mit;
     mainProgram = "openclaw";
   };
-}
+})
