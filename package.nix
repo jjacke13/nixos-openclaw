@@ -76,7 +76,7 @@ pkgs.stdenvNoCC.mkDerivation (finalAttrs: {
 
     mkdir -p $out/lib/openclaw $out/bin
 
-    cp -r dist node_modules package.json $out/lib/openclaw/
+    cp -r dist node_modules package.json docs skills $out/lib/openclaw/
 
     # Remove broken symlinks (workspace packages not in output)
     find $out/lib/openclaw/node_modules -type l ! -exec test -e {} \; -delete
