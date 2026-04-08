@@ -6,18 +6,18 @@ let
 in
 pkgs.stdenvNoCC.mkDerivation (finalAttrs: {
   pname = "openclaw";
-  version = "2026.3.28";
+  version = "2026.4.8";
 
   src = pkgs.fetchFromGitHub {
     owner = "openclaw";
     repo = "openclaw";
     rev = "v${finalAttrs.version}";
-    hash = "sha256-mv1G9AWo/aGrJZGLE5mbvQrJDEgfvuvBlDBfi7EPnbc=";
+    hash = "sha256-Y9FvI6Vhyi+kBLVio7/Qz77NWBViYMD0KheV7cXyeXs=";
   };
 
   pnpmDeps = pnpm.fetchDeps {
     inherit (finalAttrs) pname version src;
-    hash = "sha256-Kcuh8LdTCF9/d36eo/DtqN9zQwWWOYlrNz7c1gem1FY=";
+    hash = "sha256-miIxfJxbRwAZLZuipD8mrGhrWSzYH17J2uRDke72FWM=";
     fetcherVersion = 2;
   };
 
